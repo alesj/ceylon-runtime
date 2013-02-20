@@ -37,7 +37,6 @@ import com.redhat.ceylon.cmr.api.VisibilityType;
 import com.redhat.ceylon.common.Versions;
 import org.jboss.modules.DependencySpec;
 import org.jboss.modules.LocalLoader;
-import org.jboss.modules.Module;
 import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
 import org.jboss.modules.ModuleLoader;
@@ -103,7 +102,6 @@ public class CeylonModuleLoader extends ModuleLoader {
     }
 
     private RepositoryManager repository;
-    private Map<ModuleIdentifier, ArtifactResult> artifacts = new ConcurrentHashMap<ModuleIdentifier, ArtifactResult>();
     private Map<ModuleIdentifier, List<DependencySpec>> dependencies = new ConcurrentHashMap<ModuleIdentifier, List<DependencySpec>>();
     private Graph<ModuleIdentifier, ModuleIdentifier, Boolean> graph = new Graph<ModuleIdentifier, ModuleIdentifier, Boolean>();
 
@@ -168,14 +166,7 @@ public class CeylonModuleLoader extends ModuleLoader {
         if (BOOTSTRAP.contains(mi))
             return org.jboss.modules.Module.getBootModuleLoader().loadModule(mi);
 
-        final Module module = super.preloadModule(mi);
-
-        if (module != null) {
-            ArtifactResult result = artifacts.get(mi);
-            // com.redhat.ceylon.compiler.java.Util.loadModule(mi.getName(), mi.getSlot(), result, SecurityActions.getClassLoader(module))
-        }
-
-        return module;
+        return super.preloadModule(mi);
     }
 
     /**
@@ -286,11 +277,9 @@ public class CeylonModuleLoader extends ModuleLoader {
 
             dependencies.put(moduleIdentifier, deps);
 
-            ModuleSpec moduleSpec = builder.create();
-            // add on successful spec build
-            artifacts.put(moduleIdentifier, artifact);
+            builder.setClassFileTransformer(new UtilRegistryTransformer(moduleIdentifier, artifact));
 
-            return moduleSpec;
+            return builder.create();
         } catch (Exception e) {
             throw new ModuleLoadException(e);
         }
